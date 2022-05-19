@@ -62,19 +62,20 @@ echo "/interface/wireguard/$ACT \\
     address=$ADDR interface=${SERVER_WG_NIC} network=${SERVER_WG_IPV4}"0" comment=\"${SERVER_WG_NIC}\"
 /interface list member $ACT \\
     interface=${SERVER_WG_NIC} list=LAN comment=\"${SERVER_WG_NIC}\"
-/ip/firewall/filter $ACT \\
-    action=accept comment="${SERVER_WG_NIC}srv" chain=input dst-port=${SERVER_PORT} protocol=udp
-/ip/firewall/filter $ACT \\
-    action=accept comment="${SERVER_WG_NIC}inp" chain=input in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
-/ip/firewall/filter $ACT \\
-    action=accept comment="${SERVER_WG_NIC}frw" chain=forward in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
-/ip/firewall/filter move \\
-    [find comment=\"${SERVER_WG_NIC}srv\"] [find comment~\"ICMP\" and chain=input]
-/ip/firewall/filter move \\
-    [find comment=\"${SERVER_WG_NIC}inp\"] [find comment~\"ICMP\" and chain=input]
-/ip/firewall/filter move \\
-    [find comment=\"${SERVER_WG_NIC}frw\"] [find comment~\"drop inv\" and chain=forward]
 "
+#/ip/firewall/filter $ACT \\
+#    action=accept comment="${SERVER_WG_NIC}srv" chain=input dst-port=${SERVER_PORT} protocol=udp
+#/ip/firewall/filter $ACT \\
+#    action=accept comment="${SERVER_WG_NIC}inp" chain=input in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
+#/ip/firewall/filter $ACT \\
+#    action=accept comment="${SERVER_WG_NIC}frw" chain=forward in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
+#/ip/firewall/filter move \\
+#    [find comment=\"${SERVER_WG_NIC}srv\"] [find comment~\"ICMP\" and chain=input]
+#/ip/firewall/filter move \\
+#    [find comment=\"${SERVER_WG_NIC}inp\"] [find comment~\"ICMP\" and chain=input]
+#/ip/firewall/filter move \\
+#    [find comment=\"${SERVER_WG_NIC}frw\"] [find comment~\"drop inv\" and chain=forward]
+
 }
 
 function srv_peer_gen() {
@@ -229,6 +230,7 @@ function newClient() {
 PrivateKey = ${CLIENT_PRIV_KEY}
 Address = ${CLIENT_WG_IPV4}/24${TMP}
 DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2}
+ListenPort = ${SERVER_PORT}
 MTU=$MTU
 
 [Peer]
