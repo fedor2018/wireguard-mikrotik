@@ -6,6 +6,7 @@ CFG_DIR=$1
 PARAMS=$CFG_DIR/.params
 CLI_DIR=$CFG_DIR/clients
 MK_DIR=$CFG_DIR/mikrotik
+CLI_MK_DIR=$MK_DIR/clients
 QR_DIR=$CFG_DIR/qr
 
 function paramQuestions() {
@@ -59,18 +60,18 @@ echo "/interface/wireguard/$ACT \\
     listen-port=${SERVER_PORT} mtu=$MTU name=${SERVER_WG_NIC} \\
     private-key=\"${PRIV_KEY}\" comment=\"${SERVER_WG_NIC}\"
 /ip/address/$ACT \\
-    address=$ADDR interface=${SERVER_WG_NIC} network=${SERVER_WG_IPV4}"0" comment=\"${SERVER_WG_NIC}\"
+    address=$ADDR interface=${SERVER_WG_NIC}/24 network=${SERVER_WG_IPV4}"0" comment=\"${SERVER_WG_NIC}\"
 /interface list member $ACT \\
     interface=${SERVER_WG_NIC} list=LAN comment=\"${SERVER_WG_NIC}\"
+/ip/firewall/filter $ACT \\
+    action=accept comment="${SERVER_WG_NIC}srv" chain=input dst-port=${SERVER_PORT} protocol=udp \\
+/ip/firewall/filter move \\
+    [find comment=\"${SERVER_WG_NIC}srv\"] [find comment~\"ICMP\" and chain=input]
 "
-#/ip/firewall/filter $ACT \\
-#    action=accept comment="${SERVER_WG_NIC}srv" chain=input dst-port=${SERVER_PORT} protocol=udp
 #/ip/firewall/filter $ACT \\
 #    action=accept comment="${SERVER_WG_NIC}inp" chain=input in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
 #/ip/firewall/filter $ACT \\
 #    action=accept comment="${SERVER_WG_NIC}frw" chain=forward in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
-#/ip/firewall/filter move \\
-#    [find comment=\"${SERVER_WG_NIC}srv\"] [find comment~\"ICMP\" and chain=input]
 #/ip/firewall/filter move \\
 #    [find comment=\"${SERVER_WG_NIC}inp\"] [find comment~\"ICMP\" and chain=input]
 #/ip/firewall/filter move \\
@@ -85,7 +86,7 @@ echo "/interface/wireguard/peers/$ACT \\
     comment=\"${SERVER_WG_NIC} peer ${CLIENT_NAME}\" \\
     public-key=\"${CLIENT_PUB_KEY}\" \\
     preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" \\
-    allowed-address=${CLIENT_WG_IPV4}/24 \\
+    allowed-address=${CLIENT_WG_IPV4}/32 \\
     persistent-keepalive=00:00:25"
 # > "${CFG_DIR}/${CLIENT_NAME}-server.rsc"
 }
@@ -156,7 +157,7 @@ ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
 ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >>"$CFG_DIR/${SERVER_WG_NIC}.conf"
 
 srv_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1/24 > "$MK_DIR/server.rsc"
-srv_remove > "$MK_DIR/server-remove.rsc"
+srv_remove > "$MK_DIR/remove.rsc"
 
 }
 
@@ -223,12 +224,12 @@ function newClient() {
         CLIENT_PUB_KEY=$(echo "${CLIENT_PRIV_KEY}" | wg pubkey)
         CLIENT_PRE_SHARED_KEY=$(wg genpsk)
 
-    [ -n "${CLIENT_WG_IPV6}" ] && TMP=,${CLIENT_WG_IPV6}/128
-    NAME=${CLIENT_NAME}-${SERVER_WG_NIC}
+    [ -n "${CLIENT_WG_IPV6}" ] && TMP=,${CLIENT_WG_IPV6}
+    NAME=${CLIENT_NAME}
 	# Create client file and add the server as a peer
 	echo "[Interface]
 PrivateKey = ${CLIENT_PRIV_KEY}
-Address = ${CLIENT_WG_IPV4}/24${TMP}
+Address = ${CLIENT_WG_IPV4}/32${TMP}
 DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2}
 ListenPort = ${SERVER_PORT}
 MTU=$MTU
@@ -246,16 +247,14 @@ AllowedIPs = 0.0.0.0/0,::/0" >>"${CLI_DIR}/${NAME}.conf"
 [Peer]
 PublicKey = ${CLIENT_PUB_KEY}
 PresharedKey = ${CLIENT_PRE_SHARED_KEY}
-AllowedIPs = ${CLIENT_WG_IPV4}/32" >>"$CFG_DIR/${SERVER_WG_NIC}.conf"
+AllowedIPs = ${CLIENT_WG_IPV4}/32${TMP}" >>"$CFG_DIR/${SERVER_WG_NIC}.conf"
 
-##qrencode -t ansiutf8 -l L -r "${CLI_DIR}/${NAME}.conf" -o "${QR_DIR}/${NAME}.txt"
 qrencode -t png -l L -r "${CLI_DIR}/${NAME}.conf" -o "${QR_DIR}/${NAME}.png"
 
-srv_peer_gen > "${MK_DIR}/${CLIENT_NAME}-server.rsc"
+srv_peer_gen > "${MK_DIR}/${CLIENT_NAME}-peer.rsc"
 #srv_peer_gen remove >> "${MK_DIR}/${CLIENT_NAME}-server-remove.rsc"
-
-srv_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}/24  > "${MK_DIR}/${CLIENT_NAME}-client.rsc"
-cli_gen >> "${MK_DIR}/${CLIENT_NAME}-client.rsc"
+srv_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_MK_DIR}/${CLIENT_NAME}.rsc"
+cli_gen >> "${CLI_MK_DIR}/${CLIENT_NAME}.rsc"
 
 }
 
@@ -276,7 +275,7 @@ if [ -f $PARAMS ];then
     newClient
 else
     mkdir -p $CLI_DIR
-    mkdir -p $MK_DIR
+    mkdir -p $CLI_MK_DIR
     mkdir -p $QR_DIR
     paramQuestions
     coreConfig
