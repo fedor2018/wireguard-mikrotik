@@ -60,7 +60,7 @@ echo "/interface/wireguard/$ACT \\
     listen-port=${SERVER_PORT} mtu=$MTU name=${SERVER_WG_NIC} \\
     private-key=\"${PRIV_KEY}\" comment=\"${SERVER_WG_NIC}\"
 /ip/address/$ACT \\
-    address=$ADDR interface=${SERVER_WG_NIC}/24 network=${SERVER_WG_IPV4}"0" comment=\"${SERVER_WG_NIC}\"
+    address=$ADDR/24 interface=${SERVER_WG_NIC} network=${SERVER_WG_IPV4}"0" comment=\"${SERVER_WG_NIC}\"
 /interface list member $ACT \\
     interface=${SERVER_WG_NIC} list=LAN comment=\"${SERVER_WG_NIC}\"
 /ip/firewall/filter $ACT \\
@@ -156,7 +156,7 @@ iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE; \
 ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
 ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >>"$CFG_DIR/${SERVER_WG_NIC}.conf"
 
-srv_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1/24 > "$MK_DIR/server.rsc"
+srv_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1 > "$MK_DIR/server.rsc"
 srv_remove > "$MK_DIR/remove.rsc"
 
 }
