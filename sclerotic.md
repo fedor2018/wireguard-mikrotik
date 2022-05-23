@@ -1,4 +1,4 @@
-'''
+```
 ExtIP:Port
 IntIP=x.x.x.z/32
 PeerIP=x.x.x.y/32
@@ -13,4 +13,4 @@ Peer.PresharedKey         = Peer.PresharedKey
 Interface.Address(PeerIP) = Peer.AllowedIPs
 Peer.Endpoint(ExtIP:Port) = Interface.ListenPort
 Peer.AllowedIPs(Route)
-'''
+```
