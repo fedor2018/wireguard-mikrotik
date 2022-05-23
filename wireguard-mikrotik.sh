@@ -8,6 +8,9 @@ CLI_DIR=$CFG_DIR/clients
 MK_DIR=$CFG_DIR/mikrotik
 CLI_MK_DIR=$MK_DIR/clients
 QR_DIR=$CFG_DIR/qr
+OW_DIR=$CFG_DIR/openwrt
+CLI_OW_DIR=$OW_DIR/clients
+
 
 function paramQuestions() {
 	echo "Welcome to the WireGuard generator for Mikrotik!"
@@ -52,7 +55,7 @@ function paramQuestions() {
 	echo "You will be able to generate a client at the end of the installation."
 }
 
-function srv_gen() {
+function srv_mk_gen() {
     ACT=add
     PRIV_KEY=$1
     ADDR=$2
@@ -79,7 +82,7 @@ echo "/interface/wireguard/$ACT \\
 
 }
 
-function srv_peer_gen() {
+function srv_peer_mk_gen() {
     ACT=add
 echo "/interface/wireguard/peers/$ACT \\
     interface=${SERVER_WG_NIC} \\
@@ -88,10 +91,9 @@ echo "/interface/wireguard/peers/$ACT \\
     preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" \\
     allowed-address=${CLIENT_WG_IPV4}/32 \\
     persistent-keepalive=00:00:25"
-# > "${CFG_DIR}/${CLIENT_NAME}-server.rsc"
 }
 
-function cli_gen() {
+function cli_mk_gen() {
     ACT=add
 echo "/interface/wireguard/peers/$ACT \\
     interface=${SERVER_WG_NIC} \\
@@ -102,10 +104,9 @@ echo "/interface/wireguard/peers/$ACT \\
     endpoint-address=${SERVER_PUB_IP}  \\
     endpoint-port=${SERVER_PORT}  \\
     persistent-keepalive=00:00:25"
-# >> "${CFG_DIR}/${CLIENT_NAME}-client.rsc"
 }
 
-function srv_remove() {
+function srv_mk_remove() {
 echo "/interface/list/member remove [find where comment~\"${SERVER_WG_NIC}\"]
 /ip/firewall/filter remove [ find where comment~\"${SERVER_WG_NIC}\" ]
 /ip/address remove [find where comment~\"${SERVER_WG_NIC}\"]
@@ -113,6 +114,95 @@ echo "/interface/list/member remove [find where comment~\"${SERVER_WG_NIC}\"]
 /interface/wireguard remove [find comment~\"${SERVER_WG_NIC}\"]
 "
 
+}
+
+function srv_ow_gen() {
+    PRIV_KEY=$1
+    ADDR=$2
+echo "uci set network.${SERVER_WG_NIC}.proto='wireguard'
+uci set network.${SERVER_WG_NIC}.private_key='${PRIV_KEY}'
+uci set network.${SERVER_WG_NIC}.listen_port='${SERVER_PORT}'
+uci set network.${SERVER_WG_NIC}.addresses='$ADDR/24'
+uci commit network
+"
+}
+
+function srv_peer_ow_gen() {
+	CLI=$1 #CLIENT_NAME
+echo "uci set network.${CLI}=${SERVER_WG_NIC}
+uci set network.${CLI}.public_key='${SERVER_PUB_KEY}'
+uci set network.${CLI}.preshared_key='${CLIENT_PRE_SHARED_KEY}'
+uci set network.${CLI}.description='${CLI}'
+uci set network.${CLI}.persistent_keepalive='25'
+#uci set network.${CLI}.endpoint_host='${SERVER_PUB_IP}'
+#uci set network.${CLI}.endpoint_port='${SERVER_PORT}'
+uci set network.${CLI}.allowed_ips='0.0.0.0/0,::/0'
+uci commit network
+"
+}
+
+function cli_ow_gen() {
+	CLI=$1 #CLIENT_NAME
+echo "uci set network.${CLI}=${SERVER_WG_NIC}
+uci set network.${CLI}.public_key='${SERVER_PUB_KEY}'
+uci set network.${CLI}.preshared_key='${CLIENT_PRE_SHARED_KEY}'
+uci set network.${CLI}.description='${CLI}'
+uci set network.${CLI}.persistent_keepalive='25'
+uci set network.${CLI}.endpoint_host='${SERVER_PUB_IP}'
+uci set network.${CLI}.endpoint_port='${SERVER_PORT}'
+uci set network.${CLI}.allowed_ips='0.0.0.0/0,::/0'
+uci commit network
+"
+}
+
+function srv_gen() {
+	# Add server interface
+[ -n "${SERVER_WG_IPV6}" ] && TMP=,${SERVER_WG_IPV6}/64
+	echo "[Interface]
+Address = ${SERVER_WG_IPV4}1/24$TMP
+ListenPort = ${SERVER_PORT}
+PrivateKey = ${SERVER_PRIV_KEY}"
+
+[ -z "${SERVER_PUB_NIC}" ] && TMP="#" &&  SERVER_PUB_NIC="<ext interface>"
+echo "${TMP}PostUp = iptables -A FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT; \
+iptables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
+iptables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE; \
+ip6tables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
+ip6tables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
+${TMP}PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT; \
+iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
+iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE; \
+ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
+ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
+"
+}
+
+function srv_peer_gen() {
+    TMP=$1
+echo -e "\n### Client ${CLIENT_NAME}
+[Peer]
+PublicKey = ${CLIENT_PUB_KEY}
+PresharedKey = ${CLIENT_PRE_SHARED_KEY}
+AllowedIPs = ${CLIENT_WG_IPV4}/32${TMP}
+"
+}
+
+function cli_gen() {
+    TMP=$1
+echo "[Interface]
+PrivateKey = ${CLIENT_PRIV_KEY}
+Address = ${CLIENT_WG_IPV4}/32${TMP}
+DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2}
+ListenPort = ${SERVER_PORT}
+MTU=$MTU
+
+[Peer]
+PublicKey = ${SERVER_PUB_KEY}
+PresharedKey = ${CLIENT_PRE_SHARED_KEY}
+PersistentKeepalive = 25
+Endpoint = ${ENDPOINT}
+AllowedIPs = 0.0.0.0/0,::/0
+"
 }
 
 function coreConfig() {
@@ -136,29 +226,13 @@ SERVER_PRIV_KEY=${SERVER_PRIV_KEY}
 SERVER_PUB_KEY=${SERVER_PUB_KEY}
 CLIENT_DNS_1=${CLIENT_DNS_1}
 CLIENT_DNS_2=${CLIENT_DNS_2}" > $PARAMS
-
-	# Add server interface
-[ -n "${SERVER_WG_IPV6}" ] && TMP=,${SERVER_WG_IPV6}/64
-	echo "[Interface]
-Address = ${SERVER_WG_IPV4}1/24$TMP
-ListenPort = ${SERVER_PORT}
-PrivateKey = ${SERVER_PRIV_KEY}" >"$CFG_DIR/${SERVER_WG_NIC}.conf"
-
-[ -z "${SERVER_PUB_NIC}" ] && TMP="#" &&  SERVER_PUB_NIC="<ext interface>"
-echo "${TMP}PostUp = iptables -A FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE; \
-ip6tables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
-ip6tables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
-${TMP}PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE; \
-ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
-ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE" >>"$CFG_DIR/${SERVER_WG_NIC}.conf"
-
-srv_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1 > "$MK_DIR/server.rsc"
-srv_remove > "$MK_DIR/remove.rsc"
-
+#
+srv_gen >"$CFG_DIR/${SERVER_WG_NIC}.conf"
+#
+srv_mk_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1 > "$MK_DIR/server.rsc"
+srv_mk_remove > "$MK_DIR/remove.rsc"
+#
+srv_ow_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1 > "$OW_DIR/server.uci"
 }
 
 function newClient() {
@@ -227,35 +301,19 @@ function newClient() {
     [ -n "${CLIENT_WG_IPV6}" ] && TMP=,${CLIENT_WG_IPV6}
     NAME=${CLIENT_NAME}
 	# Create client file and add the server as a peer
-	echo "[Interface]
-PrivateKey = ${CLIENT_PRIV_KEY}
-Address = ${CLIENT_WG_IPV4}/32${TMP}
-DNS = ${CLIENT_DNS_1},${CLIENT_DNS_2}
-ListenPort = ${SERVER_PORT}
-MTU=$MTU
 
-[Peer]
-PublicKey = ${SERVER_PUB_KEY}
-PresharedKey = ${CLIENT_PRE_SHARED_KEY}
-PersistentKeepalive = 25
-Endpoint = ${ENDPOINT}
-AllowedIPs = 0.0.0.0/0,::/0" >>"${CLI_DIR}/${NAME}.conf"
-
-	# Add the client as a peer to the server
-#,${CLIENT_WG_IPV6}/128
-	echo -e "\n### Client ${CLIENT_NAME}
-[Peer]
-PublicKey = ${CLIENT_PUB_KEY}
-PresharedKey = ${CLIENT_PRE_SHARED_KEY}
-AllowedIPs = ${CLIENT_WG_IPV4}/32${TMP}" >>"$CFG_DIR/${SERVER_WG_NIC}.conf"
-
+cli_gen $TMP > "${CLI_DIR}/${NAME}.conf"
+srv_peer_gen $TMP >>"$CFG_DIR/${SERVER_WG_NIC}.conf"
+#
+srv_peer_mk_gen > "${MK_DIR}/${CLIENT_NAME}-peer.rsc"
+srv_mk_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_MK_DIR}/${CLIENT_NAME}.rsc"
+cli_mk_gen >> "${CLI_MK_DIR}/${CLIENT_NAME}.rsc"
+#??
+srv_peer_ow_gen ${CLIENT_NAME} >> $OW_DIR/server.uci
+srv_ow_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
+cli_ow_gen ${CLIENT_NAME} >> "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
+#
 qrencode -t png -l L -r "${CLI_DIR}/${NAME}.conf" -o "${QR_DIR}/${NAME}.png"
-
-srv_peer_gen > "${MK_DIR}/${CLIENT_NAME}-peer.rsc"
-#srv_peer_gen remove >> "${MK_DIR}/${CLIENT_NAME}-server-remove.rsc"
-srv_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_MK_DIR}/${CLIENT_NAME}.rsc"
-cli_gen >> "${CLI_MK_DIR}/${CLIENT_NAME}.rsc"
-
 }
 
 function help() {
@@ -277,6 +335,7 @@ else
     mkdir -p $CLI_DIR
     mkdir -p $CLI_MK_DIR
     mkdir -p $QR_DIR
+    mkdir -p $CLI_OW_DIR
     paramQuestions
     coreConfig
 fi
