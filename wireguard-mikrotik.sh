@@ -130,13 +130,11 @@ uci commit network
 function srv_peer_ow_gen() {
 	CLI=$1 #CLIENT_NAME
 echo "uci set network.${CLI}=${SERVER_WG_NIC}
-uci set network.${CLI}.public_key='${SERVER_PUB_KEY}'
+uci set network.${CLI}.public_key='${CLIENT_PUB_KEY}'
 uci set network.${CLI}.preshared_key='${CLIENT_PRE_SHARED_KEY}'
 uci set network.${CLI}.description='${SERVER_WG_NIC} peer ${CLI}'
 uci set network.${CLI}.persistent_keepalive='25'
-#uci set network.${CLI}.endpoint_host='${SERVER_PUB_IP}'
-#uci set network.${CLI}.endpoint_port='${SERVER_PORT}'
-uci set network.${CLI}.allowed_ips='${DEF_ALLOW_IP}'
+uci set network.${CLI}.allowed_ips='${CLIENT_WG_IPV4}/32'
 uci commit network
 "
 }
