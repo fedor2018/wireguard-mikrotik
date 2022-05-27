@@ -10,7 +10,7 @@ CLI_MK_DIR=$MK_DIR/clients
 QR_DIR=$CFG_DIR/qr
 OW_DIR=$CFG_DIR/openwrt
 CLI_OW_DIR=$OW_DIR/clients
-
+DEF_ALLOW_IP="0.0.0.0/1,128.0.0.0/1,::/1, 8000::/1"
 
 function paramQuestions() {
 	echo "Welcome to the WireGuard generator for Mikrotik!"
@@ -100,7 +100,7 @@ echo "/interface/wireguard/peers/$ACT \\
     comment=\"${SERVER_WG_NIC} peer ${CLIENT_NAME}\" \\
     public-key=\"${SERVER_PUB_KEY}\" \\
     preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" \\
-    allowed-address=\"0.0.0.0/0,::/0\" \\
+    allowed-address=\"${DEF_ALLOW_IP}\" \\
     endpoint-address=${SERVER_PUB_IP}  \\
     endpoint-port=${SERVER_PORT}  \\
     persistent-keepalive=00:00:25"
@@ -132,11 +132,11 @@ function srv_peer_ow_gen() {
 echo "uci set network.${CLI}=${SERVER_WG_NIC}
 uci set network.${CLI}.public_key='${SERVER_PUB_KEY}'
 uci set network.${CLI}.preshared_key='${CLIENT_PRE_SHARED_KEY}'
-uci set network.${CLI}.description='${CLI}'
+uci set network.${CLI}.description='${SERVER_WG_NIC} peer ${CLI}'
 uci set network.${CLI}.persistent_keepalive='25'
 #uci set network.${CLI}.endpoint_host='${SERVER_PUB_IP}'
 #uci set network.${CLI}.endpoint_port='${SERVER_PORT}'
-uci set network.${CLI}.allowed_ips='0.0.0.0/0,::/0'
+uci set network.${CLI}.allowed_ips='${DEF_ALLOW_IP}'
 uci commit network
 "
 }
@@ -146,11 +146,11 @@ function cli_ow_gen() {
 echo "uci set network.${CLI}=${SERVER_WG_NIC}
 uci set network.${CLI}.public_key='${SERVER_PUB_KEY}'
 uci set network.${CLI}.preshared_key='${CLIENT_PRE_SHARED_KEY}'
-uci set network.${CLI}.description='${CLI}'
+uci set network.${CLI}.description='client ${CLI}'
 uci set network.${CLI}.persistent_keepalive='25'
 uci set network.${CLI}.endpoint_host='${SERVER_PUB_IP}'
 uci set network.${CLI}.endpoint_port='${SERVER_PORT}'
-uci set network.${CLI}.allowed_ips='0.0.0.0/0,::/0'
+uci set network.${CLI}.allowed_ips='${DEF_ALLOW_IP}'
 uci commit network
 "
 }
@@ -201,7 +201,7 @@ PublicKey = ${SERVER_PUB_KEY}
 PresharedKey = ${CLIENT_PRE_SHARED_KEY}
 PersistentKeepalive = 25
 Endpoint = ${ENDPOINT}
-AllowedIPs = 0.0.0.0/0,::/0
+AllowedIPs = ${DEF_ALLOW_IP}
 "
 }
 
