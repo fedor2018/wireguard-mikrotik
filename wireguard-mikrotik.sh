@@ -119,37 +119,72 @@ echo "/interface/list/member remove [find where comment~\"${SERVER_WG_NIC}\"]
 function srv_ow_gen() {
     PRIV_KEY=$1
     ADDR=$2
-echo "uci set network.${SERVER_WG_NIC}.proto='wireguard'
+echo "uci set network.${SERVER_WG_NIC}=interface
+uci set network.${SERVER_WG_NIC}.proto='wireguard'
 uci set network.${SERVER_WG_NIC}.private_key='${PRIV_KEY}'
 uci set network.${SERVER_WG_NIC}.listen_port='${SERVER_PORT}'
 uci set network.${SERVER_WG_NIC}.addresses='$ADDR/24'
 uci commit network
+uci set `uci show firewall|grep zone|grep name|grep lan|sed 's/.name.*//'`.network='lan wg0'
+uci commit firewall
 "
 }
-
+# add to /etc/config/network
+function srv_ow_gen_cfg() {
+    PRIV_KEY=$1
+    ADDR=$2
+echo "# example
+config interface '${SERVER_WG_NIC}'
+        option proto 'wireguard'
+        option private_key '${PRIV_KEY}'
+        option listen_port '${SERVER_PORT}'
+        list addresses '$ADDR/24'
+"
+}
+# peer
 function srv_peer_ow_gen() {
 	CLI=$1 #CLIENT_NAME
-echo "uci set network.${CLI}=${SERVER_WG_NIC}
-uci set network.${CLI}.public_key='${CLIENT_PUB_KEY}'
-uci set network.${CLI}.preshared_key='${CLIENT_PRE_SHARED_KEY}'
-uci set network.${CLI}.description='${SERVER_WG_NIC} peer ${CLI}'
-uci set network.${CLI}.persistent_keepalive='25'
-uci set network.${CLI}.allowed_ips='${CLIENT_WG_IPV4}/32'
+echo "uci add network wireguard_${SERVER_WG_NIC}
+uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='${CLIENT_WG_IPV4}/32'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${CLIENT_PUB_KEY}'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].description='${SERVER_WG_NIC} peer ${CLI}'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='25'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].preshared_key='${CLIENT_PRE_SHARED_KEY}'
+
 uci commit network
 "
 }
 
+# client
 function cli_ow_gen() {
 	CLI=$1 #CLIENT_NAME
-echo "uci set network.${CLI}=${SERVER_WG_NIC}
-uci set network.${CLI}.public_key='${SERVER_PUB_KEY}'
-uci set network.${CLI}.preshared_key='${CLIENT_PRE_SHARED_KEY}'
-uci set network.${CLI}.description='client ${CLI}'
-uci set network.${CLI}.persistent_keepalive='25'
-uci set network.${CLI}.endpoint_host='${SERVER_PUB_IP}'
-uci set network.${CLI}.endpoint_port='${SERVER_PORT}'
-uci set network.${CLI}.allowed_ips='${DEF_ALLOW_IP}'
+echo "uci add network wireguard_${SERVER_WG_NIC}
+uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='0.0.0.0/1'
+uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='128.0.0.0/1'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${CLIENT_PUB_KEY}'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].description='${SERVER_WG_NIC} client ${CLI}'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].endpoint_host='${SERVER_PUB_IP}'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].endpoint_port='${SERVER_PORT}'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='25'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].preshared_key='${CLIENT_PRE_SHARED_KEY}'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].route_allowed_ips='0'
+
 uci commit network
+"
+}
+# (/etc/config/network)
+function cli_ow_gen_cfg() {
+	CLI=$1 #CLIENT_NAME
+echo "config wireguard_wg0
+        list allowed_ips '0.0.0.0/1'
+        list allowed_ips '128.0.0.0/1'
+        option public_key '${CLIENT_PUB_KEY}'
+        option description '${SERVER_WG_NIC} client ${CLI}'
+        option endpoint_host '${SERVER_PUB_IP}'
+        option endpoint_port '${SERVER_PORT}'
+        option persistent_keepalive '25'
+        option preshared_key '${CLIENT_PRE_SHARED_KEY}'
+        option route_allowed_ips '0'
 "
 }
 
