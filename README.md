@@ -9,7 +9,16 @@
 - настройки для клиентов (clients/*.rsc)
 - удаление всех настроек (remove.rsc)
 
+Добавлено создание конфигов для openwrt:
+- базовая для сервера (server.uci, network)
+- peer для сервера (server.uci, network)
+- настройки для клиентов (clients/*.uci, clients/*.cfg)
+
 Запуск:
 ./wireguard-mikrotik.sh <config dir>
 Первый запуск создает серверные настройки, повторные добавляются пиры
-    
+
+Проверены варианты:
+- mikrotik -> mikrotik
+- openwrt -> mikrotik
+
