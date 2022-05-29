@@ -5,14 +5,14 @@
 
 Дополнительно создаются конфигурации в каталоге mikrotik:
 - базовая для сервера (server.rsc)
-- peer для сервера (*-peer.rsc)
-- настройки для клиентов (clients/*.rsc)
+- peer для сервера (\*-peer.rsc)
+- настройки для клиентов (clients/\*.rsc)
 - удаление всех настроек (remove.rsc)
 
 Добавлено создание конфигов для openwrt:
 - базовая для сервера (server.uci, network)
 - peer для сервера (server.uci, network)
-- настройки для клиентов (clients/**.uci, clients/**.cfg)
+- настройки для клиентов (clients/\*.uci, clients/\*.cfg)
 
 ```
 Запуск:
@@ -21,6 +21,8 @@
 ```
 
 Проверены варианты:
+- windows -> mikrotik
+- android -> mikrotik
 - mikrotik -> mikrotik
 - openwrt -> mikrotik
 
@@ -32,14 +34,14 @@ Based on the project https://github.com/angristan/wireguard-install.git
 
 Additionally, configurations are created in the mikrotik directory:
 - base for the server (server.rsc)
-- peer for server (*-peer.rsc)
-- settings for clients (clients/*.rsc)
+- peer for server (\*-peer.rsc)
+- settings for clients (clients/\*.rsc)
 - remove all settings (remove.rsc)
 
 Added creation of configs for openwrt:
 - base for the server (server.uci, network)
 - peer for server (server.uci, network)
-- settings for clients (clients/**.uci, clients/**.cfg)
+- settings for clients (clients/\*.uci, clients/\*.cfg)
 
 ```
 Usage:
@@ -48,5 +50,7 @@ The first launch creates server settings, repeated peers are added
 ```
 
 Configs tested:
+- windows -> mikrotik
+- android -> mikrotik
 - mikrotik -> mikrotik
 - openwrt -> mikrotik
