@@ -125,7 +125,7 @@ uci set network.${SERVER_WG_NIC}.private_key='${PRIV_KEY}'
 uci set network.${SERVER_WG_NIC}.listen_port='${SERVER_PORT}'
 uci set network.${SERVER_WG_NIC}.addresses='$ADDR/24'
 uci commit network
-uci set `uci show firewall|grep zone|grep name|grep lan|sed 's/.name.*//'`.network='lan wg0'
+uci set \`uci show firewall|grep zone|grep name|grep lan|sed 's/.name.*//'\`.network='lan ${SERVER_WG_NIC}'
 uci commit firewall
 "
 }
