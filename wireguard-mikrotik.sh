@@ -155,6 +155,18 @@ uci commit network
 "
 }
 
+# (/etc/config/network)
+function srv_peer_ow_gen_cfg() {
+	CLI=$1 #CLIENT_NAME
+echo "config wireguard_${SERVER_WG_NIC}
+        list allowed_ips '${CLIENT_WG_IPV4}/32'
+        option public_key '${CLIENT_PUB_KEY}'
+        option description '${SERVER_WG_NIC} peer ${CLI}'
+        option persistent_keepalive '25'
+        option preshared_key '${CLIENT_PRE_SHARED_KEY}'
+"
+}
+
 # client
 function cli_ow_gen() {
 	CLI=$1 #CLIENT_NAME
@@ -175,7 +187,7 @@ uci commit network
 # (/etc/config/network)
 function cli_ow_gen_cfg() {
 	CLI=$1 #CLIENT_NAME
-echo "config wireguard_wg0
+echo "config wireguard_${SERVER_WG_NIC}
         list allowed_ips '0.0.0.0/1'
         list allowed_ips '128.0.0.0/1'
         option public_key '${CLIENT_PUB_KEY}'
@@ -266,6 +278,7 @@ srv_mk_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1 > "$MK_DIR/server.rsc"
 srv_mk_remove > "$MK_DIR/remove.rsc"
 #
 srv_ow_gen ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1 > "$OW_DIR/server.uci"
+srv_ow_gen_cfg ${SERVER_PRIV_KEY} ${SERVER_WG_IPV4}1 > "$OW_DIR/network"
 }
 
 function newClient() {
@@ -343,8 +356,10 @@ srv_mk_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_MK_DIR}/${CLIENT_NAME}.r
 cli_mk_gen >> "${CLI_MK_DIR}/${CLIENT_NAME}.rsc"
 #??
 srv_peer_ow_gen ${CLIENT_NAME} >> $OW_DIR/server.uci
+srv_peer_ow_gen_cfg ${CLIENT_NAME} >> $OW_DIR/network
 srv_ow_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
 cli_ow_gen ${CLIENT_NAME} >> "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
+cli_ow_gen_cfg ${CLIENT_NAME} >> "${CLI_OW_DIR}/${CLIENT_NAME}.cfg"
 #
 qrencode -t png -l L -r "${CLI_DIR}/${NAME}.conf" -o "${QR_DIR}/${NAME}.png"
 }
