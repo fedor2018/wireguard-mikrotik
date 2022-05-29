@@ -12,7 +12,7 @@
 Добавлено создание конфигов для openwrt:
 - базовая для сервера (server.uci, network)
 - peer для сервера (server.uci, network)
-- настройки для клиентов (clients/*.uci, clients/*.cfg)
+- настройки для клиентов (clients/**.uci, clients/**.cfg)
 
 ```
 Запуск:
@@ -39,7 +39,7 @@ Additionally, configurations are created in the mikrotik directory:
 Added creation of configs for openwrt:
 - base for the server (server.uci, network)
 - peer for server (server.uci, network)
-- settings for clients (clients/*.uci, clients/*.cfg)
+- settings for clients (clients/**.uci, clients/**.cfg)
 
 ```
 Usage:
