@@ -366,7 +366,7 @@ srv_peer_ow_gen_cfg ${CLIENT_NAME} >> $OW_DIR/network
 srv_ow_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
 cli_ow_gen ${CLIENT_NAME} >> "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
 
-srv_ow_gen_cfg ${CLIENT_PRIV_KEY} ${SERVER_WG_IPV4} > "${CLI_OW_DIR}/${CLIENT_NAME}.cfg"
+srv_ow_gen_cfg ${CLIENT_PRIV_KEY} ${CLIENT_WG_IPV4} > "${CLI_OW_DIR}/${CLIENT_NAME}.cfg"
 cli_ow_gen_cfg ${CLIENT_NAME} >> "${CLI_OW_DIR}/${CLIENT_NAME}.cfg"
 #
 qrencode -t png -l L -r "${CLI_DIR}/${NAME}.conf" -o "${QR_DIR}/${NAME}.png"
