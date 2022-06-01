@@ -10,7 +10,7 @@ CLI_MK_DIR=$MK_DIR/clients
 QR_DIR=$CFG_DIR/qr
 OW_DIR=$CFG_DIR/openwrt
 CLI_OW_DIR=$OW_DIR/clients
-DEF_ALLOW_IP="0.0.0.0/1,128.0.0.0/1,::/1, 8000::/1"
+DEF_ALLOW_IP="0.0.0.0/1,128.0.0.0/1,::/1,8000::/1"
 MTU=1280
 KA=25 #keepalive
 
@@ -152,7 +152,6 @@ uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${CLIENT_PUB_KEY}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].description='${SERVER_WG_NIC} peer ${CLI}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='${KA}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].preshared_key='${CLIENT_PRE_SHARED_KEY}'
-ci set network.@wireguard_${SERVER_WG_NIC}[-1].route_allowed_ips='1'
 
 uci commit network
 "
@@ -176,7 +175,7 @@ function cli_ow_gen() {
 echo "uci add network wireguard_${SERVER_WG_NIC}"
 IFS=,
 for I in $DEF_ALLOW_IP;do
-echo "uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='$I'""
+echo "uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='$I'"
 done
 echo "uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${SERVER_PUB_KEY}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].description='${SERVER_WG_NIC} client ${CLI}'
@@ -192,10 +191,10 @@ uci commit network
 # (/etc/config/network)
 function cli_ow_gen_cfg() {
 	CLI=$1 #CLIENT_NAME
-echo "config wireguard_${SERVER_WG_NIC}""
+echo "config wireguard_${SERVER_WG_NIC}"
 IFS=,
 for I in $DEF_ALLOW_IP;do
-echo "        list allowed_ips '$I'
+echo "        list allowed_ips '$I'"
 done
 echo "        list allowed_ips '128.0.0.0/1'
         option public_key '${CLIENT_PUB_KEY}'
@@ -366,6 +365,8 @@ srv_peer_ow_gen ${CLIENT_NAME} >> $OW_DIR/server.uci
 srv_peer_ow_gen_cfg ${CLIENT_NAME} >> $OW_DIR/network
 srv_ow_gen $CLIENT_PRIV_KEY ${CLIENT_WG_IPV4}  > "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
 cli_ow_gen ${CLIENT_NAME} >> "${CLI_OW_DIR}/${CLIENT_NAME}.uci"
+
+srv_peer_ow_gen_cfg ${CLIENT_NAME} > "${CLI_OW_DIR}/${CLIENT_NAME}.cfg"
 cli_ow_gen_cfg ${CLIENT_NAME} >> "${CLI_OW_DIR}/${CLIENT_NAME}.cfg"
 #
 qrencode -t png -l L -r "${CLI_DIR}/${NAME}.conf" -o "${QR_DIR}/${NAME}.png"
