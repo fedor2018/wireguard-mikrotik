@@ -11,6 +11,8 @@ QR_DIR=$CFG_DIR/qr
 OW_DIR=$CFG_DIR/openwrt
 CLI_OW_DIR=$OW_DIR/clients
 DEF_ALLOW_IP="0.0.0.0/1,128.0.0.0/1,::/1, 8000::/1"
+MTU=1280
+KA=25 #keepalive
 
 function paramQuestions() {
 	echo "Welcome to the WireGuard generator for Mikrotik!"
@@ -71,15 +73,6 @@ echo "/interface/wireguard/$ACT \\
 /ip/firewall/filter move \\
     [find comment=\"${SERVER_WG_NIC}srv\"] [find comment~\"ICMP\" and chain=input]
 "
-#/ip/firewall/filter $ACT \\
-#    action=accept comment="${SERVER_WG_NIC}inp" chain=input in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
-#/ip/firewall/filter $ACT \\
-#    action=accept comment="${SERVER_WG_NIC}frw" chain=forward in-interface=wg0 src-address=${SERVER_WG_IPV4}0/24
-#/ip/firewall/filter move \\
-#    [find comment=\"${SERVER_WG_NIC}inp\"] [find comment~\"ICMP\" and chain=input]
-#/ip/firewall/filter move \\
-#    [find comment=\"${SERVER_WG_NIC}frw\"] [find comment~\"drop inv\" and chain=forward]
-
 }
 
 function srv_peer_mk_gen() {
@@ -90,7 +83,7 @@ echo "/interface/wireguard/peers/$ACT \\
     public-key=\"${CLIENT_PUB_KEY}\" \\
     preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" \\
     allowed-address=${CLIENT_WG_IPV4}/32 \\
-    persistent-keepalive=00:00:25"
+    persistent-keepalive=00:00:${KA}"
 }
 
 function cli_mk_gen() {
@@ -103,7 +96,7 @@ echo "/interface/wireguard/peers/$ACT \\
     allowed-address=\"${DEF_ALLOW_IP}\" \\
     endpoint-address=${SERVER_PUB_IP}  \\
     endpoint-port=${SERVER_PORT}  \\
-    persistent-keepalive=00:00:25"
+    persistent-keepalive=00:00:${KA}"
 }
 
 function srv_mk_remove() {
@@ -125,7 +118,15 @@ uci set network.${SERVER_WG_NIC}.private_key='${PRIV_KEY}'
 uci set network.${SERVER_WG_NIC}.listen_port='${SERVER_PORT}'
 uci set network.${SERVER_WG_NIC}.addresses='$ADDR/24'
 uci commit network
-uci set \`uci show firewall|grep zone|grep name|grep lan|sed 's/.name.*//'\`.network='lan ${SERVER_WG_NIC}'
+
+uci set \`uci show firewall|grep zone|grep name|grep lan|sed 's/.name.*//'\`.network='lan' '${SERVER_WG_NIC}'
+
+uci add firewall rule # =cfg1292bd
+uci set firewall.@rule[-1].dest_port='${SERVER_PORT}'
+uci set firewall.@rule[-1].src='wan'
+uci set firewall.@rule[-1].name='${SERVER_WG_NIC}'
+uci set firewall.@rule[-1].target='ACCEPT'
+uci add_list firewall.@rule[-1].proto='udp'
 uci commit firewall
 "
 }
@@ -139,6 +140,7 @@ config interface '${SERVER_WG_NIC}'
         option private_key '${PRIV_KEY}'
         option listen_port '${SERVER_PORT}'
         list addresses '$ADDR/24'
+        option mtu '$MTU'
 "
 }
 # peer
@@ -148,8 +150,9 @@ echo "uci add network wireguard_${SERVER_WG_NIC}
 uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='${CLIENT_WG_IPV4}/32'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${CLIENT_PUB_KEY}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].description='${SERVER_WG_NIC} peer ${CLI}'
-uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='25'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='${KA}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].preshared_key='${CLIENT_PRE_SHARED_KEY}'
+ci set network.@wireguard_${SERVER_WG_NIC}[-1].route_allowed_ips='1'
 
 uci commit network
 "
@@ -162,7 +165,7 @@ echo "config wireguard_${SERVER_WG_NIC}
         list allowed_ips '${CLIENT_WG_IPV4}/32'
         option public_key '${CLIENT_PUB_KEY}'
         option description '${SERVER_WG_NIC} peer ${CLI}'
-        option persistent_keepalive '25'
+        option persistent_keepalive '${KA}'
         option preshared_key '${CLIENT_PRE_SHARED_KEY}'
 "
 }
@@ -170,16 +173,18 @@ echo "config wireguard_${SERVER_WG_NIC}
 # client
 function cli_ow_gen() {
 	CLI=$1 #CLIENT_NAME
-echo "uci add network wireguard_${SERVER_WG_NIC}
-uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='0.0.0.0/1'
-uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='128.0.0.0/1'
-uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${CLIENT_PUB_KEY}'
+echo "uci add network wireguard_${SERVER_WG_NIC}"
+IFS=,
+for I in $DEF_ALLOW_IP;do
+echo "uci add_list network.@wireguard_${SERVER_WG_NIC}[-1].allowed_ips='$I'""
+done
+echo "uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${SERVER_PUB_KEY}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].description='${SERVER_WG_NIC} client ${CLI}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].endpoint_host='${SERVER_PUB_IP}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].endpoint_port='${SERVER_PORT}'
-uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='25'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='${KA}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].preshared_key='${CLIENT_PRE_SHARED_KEY}'
-uci set network.@wireguard_${SERVER_WG_NIC}[-1].route_allowed_ips='0'
+uci set network.@wireguard_${SERVER_WG_NIC}[-1].route_allowed_ips='1'
 
 uci commit network
 "
@@ -187,16 +192,19 @@ uci commit network
 # (/etc/config/network)
 function cli_ow_gen_cfg() {
 	CLI=$1 #CLIENT_NAME
-echo "config wireguard_${SERVER_WG_NIC}
-        list allowed_ips '0.0.0.0/1'
-        list allowed_ips '128.0.0.0/1'
+echo "config wireguard_${SERVER_WG_NIC}""
+IFS=,
+for I in $DEF_ALLOW_IP;do
+echo "        list allowed_ips '$I'
+done
+echo "        list allowed_ips '128.0.0.0/1'
         option public_key '${CLIENT_PUB_KEY}'
         option description '${SERVER_WG_NIC} client ${CLI}'
         option endpoint_host '${SERVER_PUB_IP}'
         option endpoint_port '${SERVER_PORT}'
-        option persistent_keepalive '25'
+        option persistent_keepalive '${KA}'
         option preshared_key '${CLIENT_PRE_SHARED_KEY}'
-        option route_allowed_ips '0'
+        option route_allowed_ips '1'
 "
 }
 
@@ -244,7 +252,7 @@ MTU=$MTU
 [Peer]
 PublicKey = ${SERVER_PUB_KEY}
 PresharedKey = ${CLIENT_PRE_SHARED_KEY}
-PersistentKeepalive = 25
+PersistentKeepalive = ${KA}
 Endpoint = ${ENDPOINT}
 AllowedIPs = ${DEF_ALLOW_IP}
 "
@@ -257,7 +265,6 @@ function coreConfig() {
 	SERVER_PUB_KEY=$(echo "${SERVER_PRIV_KEY}" | wg pubkey)
 	SERVER_PRE_KEY=$(wg genpsk)
 	SERVER_WG_IPV4=$(echo $SERVER_WG_IPV4|awk -F"." '{print $1"."$2"."$3"."}')
-	MTU=1280
 
 	# Save WireGuard settings
 	echo "SERVER_PUB_IP=${SERVER_PUB_IP}
