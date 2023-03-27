@@ -84,6 +84,10 @@ echo "/interface/wireguard/peers/$ACT \\
     preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" \\
     allowed-address=${CLIENT_WG_IPV4}/32 \\
     persistent-keepalive=00:00:${KA}"
+    if [ -n "${CLIENT_EXT_IP}" ];then
+	echo "endpoint-address=${CLIENT_EXT_IP}"
+	echo "endpoint-port=${SERVER_PORT}"
+    fi
 }
 
 function cli_mk_gen() {
@@ -152,9 +156,12 @@ uci set network.@wireguard_${SERVER_WG_NIC}[-1].public_key='${CLIENT_PUB_KEY}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].description='${SERVER_WG_NIC} peer ${CLI}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].persistent_keepalive='${KA}'
 uci set network.@wireguard_${SERVER_WG_NIC}[-1].preshared_key='${CLIENT_PRE_SHARED_KEY}'
-
-uci commit network
 "
+if [ -n "${CLIENT_EXT_IP}" ];then
+    echo "uci set network.@wireguard_wg0[-1].endpoint_host='${CLIENT_EXT_IP}'"
+    echo "uci set network.@wireguard_wg0[-1].endpoint_port='${SERVER_PORT}'"
+fi
+echo "uci commit network"
 }
 
 # (/etc/config/network)
@@ -167,6 +174,10 @@ echo "config wireguard_${SERVER_WG_NIC}
         option persistent_keepalive '${KA}'
         option preshared_key '${CLIENT_PRE_SHARED_KEY}'
 "
+if [ -n "${CLIENT_EXT_IP}" ];then
+    echo "option endpoint_host '${CLIENT_EXT_IP}'"
+    echo "option endpoint_port ${SERVER_PORT}'"
+fi
 }
 
 # client
@@ -237,6 +248,7 @@ PublicKey = ${CLIENT_PUB_KEY}
 PresharedKey = ${CLIENT_PRE_SHARED_KEY}
 AllowedIPs = ${CLIENT_WG_IPV4}/32${TMP}
 "
+[ -n "${CLIENT_EXT_IP}" ] && echo "Endpoint = ${CLIENT_EXT_IP}:${SERVER_PORT}"
 }
 
 function cli_gen() {
@@ -345,6 +357,7 @@ function newClient() {
 		fi
 	done
 
+	read -rp "Client's Wireguard external IP[off]: " -e CLIENT_EXT_IP
 
         CLIENT_PRIV_KEY=$(wg genkey)
         CLIENT_PUB_KEY=$(echo "${CLIENT_PRIV_KEY}" | wg pubkey)

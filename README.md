@@ -13,6 +13,7 @@
 - базовая для сервера (server.uci, network)
 - peer для сервера (server.uci, network)
 - настройки для клиентов (clients/\*.uci, clients/\*.cfg)
+- добавлена возможность ввода адреса клиента на сервере
 
 ```
 Запуск:
@@ -42,6 +43,7 @@ Added creation of configs for openwrt:
 - base for the server (server.uci, network)
 - peer for server (server.uci, network)
 - settings for clients (clients/\*.uci, clients/\*.cfg)
+Added the ability to enter the client address on the server
 
 ```
 Usage:
