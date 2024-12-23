@@ -61,28 +61,28 @@ function srv_mk_gen() {
     ACT=add
     PRIV_KEY=$1
     ADDR=$2
-echo "/interface/wireguard/$ACT \\
-    listen-port=${SERVER_PORT} mtu=$MTU name=${SERVER_WG_NIC} \\
+echo "/interface/wireguard/$ACT
+    listen-port=${SERVER_PORT} mtu=$MTU name=${SERVER_WG_NIC}
     private-key=\"${PRIV_KEY}\" comment=\"${SERVER_WG_NIC}\"
-/ip/address/$ACT \\
+/ip/address/$ACT
     address=$ADDR/24 interface=${SERVER_WG_NIC} network=${SERVER_WG_IPV4}"0" comment=\"${SERVER_WG_NIC}\"
-/interface list member $ACT \\
+/interface list member $ACT
     interface=${SERVER_WG_NIC} list=LAN comment=\"${SERVER_WG_NIC}\"
-/ip/firewall/filter $ACT \\
-    action=accept comment="${SERVER_WG_NIC}srv" chain=input dst-port=${SERVER_PORT} protocol=udp \\
-/ip/firewall/filter move \\
+/ip/firewall/filter $ACT
+    action=accept comment="${SERVER_WG_NIC}srv" chain=input dst-port=${SERVER_PORT} protocol=udp
+/ip/firewall/filter move
     [find comment=\"${SERVER_WG_NIC}srv\"] [find comment~\"ICMP\" and chain=input]
 "
 }
 
 function srv_peer_mk_gen() {
     ACT=add
-echo "/interface/wireguard/peers/$ACT \\
-    interface=${SERVER_WG_NIC} \\
-    comment=\"${SERVER_WG_NIC} peer ${CLIENT_NAME}\" \\
-    public-key=\"${CLIENT_PUB_KEY}\" \\
-    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" \\
-    allowed-address=${CLIENT_WG_IPV4}/32 \\
+echo "/interface/wireguard/peers/$ACT
+    interface=${SERVER_WG_NIC}
+    comment=\"${SERVER_WG_NIC} peer ${CLIENT_NAME}\"
+    public-key=\"${CLIENT_PUB_KEY}\"
+    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\"
+    allowed-address=${CLIENT_WG_IPV4}/32
     persistent-keepalive=00:00:${KA}"
     if [ -n "${CLIENT_EXT_IP}" ];then
 	echo "endpoint-address=${CLIENT_EXT_IP}"
@@ -92,14 +92,14 @@ echo "/interface/wireguard/peers/$ACT \\
 
 function cli_mk_gen() {
     ACT=add
-echo "/interface/wireguard/peers/$ACT \\
-    interface=${SERVER_WG_NIC} \\
-    comment=\"${SERVER_WG_NIC} peer ${CLIENT_NAME}\" \\
-    public-key=\"${SERVER_PUB_KEY}\" \\
-    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\" \\
-    allowed-address=\"${DEF_ALLOW_IP}\" \\
-    endpoint-address=${SERVER_PUB_IP}  \\
-    endpoint-port=${SERVER_PORT}  \\
+echo "/interface/wireguard/peers/$ACT
+    interface=${SERVER_WG_NIC}
+    comment=\"${SERVER_WG_NIC} peer ${CLIENT_NAME}\"
+    public-key=\"${SERVER_PUB_KEY}\"
+    preshared-key=\"${CLIENT_PRE_SHARED_KEY}\"
+    allowed-address=\"${DEF_ALLOW_IP}\"
+    endpoint-address=${SERVER_PUB_IP} 
+    endpoint-port=${SERVER_PORT} 
     persistent-keepalive=00:00:${KA}"
 }
 
@@ -227,15 +227,15 @@ ListenPort = ${SERVER_PORT}
 PrivateKey = ${SERVER_PRIV_KEY}"
 
 [ -z "${SERVER_PUB_NIC}" ] && TMP="#" &&  SERVER_PUB_NIC="<ext interface>"
-echo "${TMP}PostUp = iptables -A FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE; \
-ip6tables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
+echo "${TMP}PostUp = iptables -A FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT;
+iptables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT;
+iptables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE;
+ip6tables -A FORWARD -i ${SERVER_WG_NIC} -j ACCEPT;
 ip6tables -t nat -A POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
-${TMP}PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
-iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE; \
-ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT; \
+${TMP}PostDown = iptables -D FORWARD -i ${SERVER_PUB_NIC} -o ${SERVER_WG_NIC} -j ACCEPT;
+iptables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT;
+iptables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE;
+ip6tables -D FORWARD -i ${SERVER_WG_NIC} -j ACCEPT;
 ip6tables -t nat -D POSTROUTING -o ${SERVER_PUB_NIC} -j MASQUERADE
 "
 }
