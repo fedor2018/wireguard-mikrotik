@@ -43,7 +43,7 @@ Added creation of configs for openwrt:
 - base for the server (server.uci, network)
 - peer for server (server.uci, network)
 - settings for clients (clients/\*.uci, clients/\*.cfg)
-Added the ability to enter the client address on the server
+- Added the ability to enter the client address on the server
 
 ```
 Usage:

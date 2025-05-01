@@ -98,8 +98,8 @@ echo "/interface/wireguard/peers/$ACT
     public-key=\"${SERVER_PUB_KEY}\"
     preshared-key=\"${CLIENT_PRE_SHARED_KEY}\"
     allowed-address=\"${DEF_ALLOW_IP}\"
-    endpoint-address=${SERVER_PUB_IP} 
-    endpoint-port=${SERVER_PORT} 
+    endpoint-address=${SERVER_PUB_IP}
+    endpoint-port=${SERVER_PORT}
     persistent-keepalive=00:00:${KA}"
 }
 
